@@ -21,7 +21,7 @@ try:
   # Create a server socket
   # ~~~~ INSERT CODE ~~~~
   #listen_socket = socket.socket(socket.AF_INET, socket. 0); the one from the lecture video 
-  server_Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
   # ~~~~ END CODE INSERT ~~~~
   print ('Created socket')
@@ -33,7 +33,7 @@ try:
   # Bind the the server socket to a host and port
   # ~~~~ INSERT CODE ~~~~
   #bind(listen_socket, server_addr->ai_addr, server_addr->ai_addrlen) # just like the on from lecture
-  server_Socket.bind((proxyHost, proxyPort))
+  serverSocket.bind((proxyHost, proxyPort))
   # ~~~~ END CODE INSERT ~~~~
   print ('Port is bound')
 except:
@@ -43,7 +43,7 @@ except:
 try:
   # Listen on the server socket
   # ~~~~ INSERT CODE ~~~~
-  server_Socket.listen(5) # since on lecture she put QLEN = 5 so lets try 5 here too 
+  serverSocket.listen(5) # since on lecture she put QLEN = 5 so lets try 5 here too 
   # ~~~~ END CODE INSERT ~~~~
   print ('Listening to socket')
 except:
@@ -59,7 +59,7 @@ while True:
   try:
     # ~~~~ INSERT CODE ~~~~
     #connection_socket = accept(listen_socket, NULL, NULL); from the lecture 
-    client_Socket, clientAddr = server_Socket.accept()
+    clientSocket, clientAddr = serverSocket.accept()
     # ~~~~ END CODE INSERT ~~~~
     print ('Received a connection')
   except:
@@ -125,6 +125,9 @@ while True:
     # ProxyServer finds a cache hit
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
+
+    clientSocket.sendall(cacheData.encode())
+
     # ~~~~ END CODE INSERT ~~~~
     cacheFile.close()
     print ('Sent to the client:')
@@ -135,6 +138,10 @@ while True:
     # Create a socket to connect to origin server
     # and store in originServerSocket
     # ~~~~ INSERT CODE ~~~~
+
+    originServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    originServerSocket.connect((hostname, 80))
+
     # ~~~~ END CODE INSERT ~~~~
 
     print ('Connecting to:\t\t' + hostname + '\n')
@@ -143,6 +150,10 @@ while True:
       address = socket.gethostbyname(hostname)
       # Connect to the origin server
       # ~~~~ INSERT CODE ~~~~
+
+      originServerRequest = f"GET {resource} HTTP/1.1"
+      originServerRequestHeader = f"Host: {hostname}\r\nConnection: close\r\n" 
+
       # ~~~~ END CODE INSERT ~~~~
       print ('Connected to origin Server')
 
@@ -153,6 +164,15 @@ while True:
       # originServerRequest is the first line in the request and
       # originServerRequestHeader is the second line in the request
       # ~~~~ INSERT CODE ~~~~
+
+      request = originServerRequest + '\r\n' + originServerRequestHeader + '\r\n\r\n'
+
+      print('Forwarding request to the origin server:')
+      for line in request.split('\r\n'):
+        print ('> ' + line)
+
+      originServerSocket.sendall(request.encode())
+
       # ~~~~ END CODE INSERT ~~~~
 
       # Construct the request to send to the origin server
@@ -173,10 +193,16 @@ while True:
 
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
+
+      response_data = originServerSocket.recv(BUFFER_SIZE)
+
       # ~~~~ END CODE INSERT ~~~~
 
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
+
+      clientSocket.sendall(response_data)
+
       # ~~~~ END CODE INSERT ~~~~
 
       # Create a new file in the cache for the requested file.
@@ -188,6 +214,15 @@ while True:
 
       # Save origin server response in the cache file
       # ~~~~ INSERT CODE ~~~~
+
+      #saves the resonose in the cache and create it if it does not exist
+      cacheDir, file = os.path.split(cacheLocation)
+      if not os.path.exists(cacheDir):
+        os.makedirs(cacheDir)
+      cacheFile = open(cacheLocation, 'wb')
+      cacheFile.write(response_data)
+      cacheFile.close()
+
       # ~~~~ END CODE INSERT ~~~~
       cacheFile.close()
       print ('cache file closed')
