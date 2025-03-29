@@ -56,6 +56,8 @@ while True:
   # Accept connection from client and store in the clientSocket
   try:
     # ~~~~ INSERT CODE ~~~~
+    clientSocket, clientAddr = serverSocket.accept() 
+    print("THank you , now we have a connection !")
     # ~~~~ END CODE INSERT ~~~~
     print ('Received a connection')
   except:
@@ -65,7 +67,7 @@ while True:
   # Get HTTP request from client
   # and store it in the variable: message_bytes
   # ~~~~ INSERT CODE ~~~~
-  clientSocket, clientAddr = serverSocket.accept() 
+  #clientSocket, clientAddr = serverSocket.accept() 
   # ~~~~ END CODE INSERT ~~~~
   message_bytes = clientSocket.recv(BUFFER_SIZE)
   message = message_bytes.decode('utf-8')
@@ -120,9 +122,8 @@ while True:
     # ProxyServer finds a cache hit
     # Send back response to client 
     # ~~~~ INSERT CODE ~~~~
-    clientSocket.sendall("".join(cacheData).encode()) 
+    ##clientSocket.sendall("".join(cacheData).encode()) 
     # ~~~~ END CODE INSERT ~~~~
-    cacheFile.close()
     print ('Sent to the client:')
     print ('> ' + cacheData)
   except:
@@ -165,11 +166,11 @@ while True:
       for line in request.split('\r\n'):
         print ('> ' + line)
 
-      try:
-        originServerSocket.sendall(request.encode())
-      except socket.error:
-        print ('Forward request to origin failed')
-        sys.exit()
+      #try:
+        #originServerSocket.sendall(request.encode())
+      #except socket.error:
+        #print ('Forward request to origin failed')
+        #sys.exit()
 
       print('Request sent to origin server\n')
 
@@ -203,7 +204,7 @@ while True:
 
   
       # ~~~~ END CODE INSERT ~~~~
-      cacheFile.close()
+      #cacheFile.close()
       print ('cache file closed')
 
       # finished communicating with origin server - shutdown socket writes
