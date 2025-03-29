@@ -4,7 +4,7 @@ import sys
 import os
 import argparse
 import re
-from urllib.parse import urlparse # For robust URL parsing
+
 
 # 1MB buffer size
 BUFFER_SIZE = 1000000
@@ -22,9 +22,7 @@ try:
   # Create a server socket
   # ~~~~ INSERT CODE ~~~~
   #listen_socket = socket.socket(socket.AF_INET, socket. 0); the one from the lecture video 
-  server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+  serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   # ~~~~ END CODE INSERT ~~~~
   print ('Created socket')
 except:
@@ -35,7 +33,7 @@ try:
   # Bind the the server socket to a host and port
   # ~~~~ INSERT CODE ~~~~
   #bind(listen_socket, server_addr->ai_addr, server_addr->ai_addrlen) # just like the on from lecture
-  server_socket.bind((proxyHost, proxyPort))
+  serverSocket.bind((proxyHost, proxyPort))
   # ~~~~ END CODE INSERT ~~~~
   print ('Port is bound')
 except:
@@ -45,7 +43,7 @@ except:
 try:
   # Listen on the server socket
   # ~~~~ INSERT CODE ~~~~
-  server_socket.listen(5) # since on lecture she put QLEN = 5 so lets try 5 here too 
+  serverSocket.listen(5) # since on lecture she put QLEN = 5 so lets try 5 here too 
   # ~~~~ END CODE INSERT ~~~~
   print ('Listening to socket')
 except:
@@ -61,7 +59,7 @@ while True:
   try:
     # ~~~~ INSERT CODE ~~~~
     #connection_socket = accept(listen_socket, NULL, NULL); from the lecture 
-    clientSocket, clientAddr = server_socket.accept()
+    clientSocket, clientAddr = serverSocket.accept()
     # ~~~~ END CODE INSERT ~~~~
     print ('Received a connection')
   except:
@@ -101,24 +99,25 @@ while True:
   # Split hostname from resource name
   resourceParts = URI.split('/', 1)
   hostname = resourceParts[0]
-  resource = '/'
+  resource = '/' + resourceParts[1] if len(resourceParts) == 2 else '/'
 
-  if len(resourceParts) == 2:
+  #if len(resourceParts) == 2:
     # Resource is absolute URI with hostname and resource
-    resource = resource + resourceParts[1]
+   # resource = resource + resourceParts[1]
 
   print ('Requested Resource:\t' + resource)
 
   # Check if resource is in cache
-  try:
-    cacheLocation = './' + hostname + resource
-    if cacheLocation.endswith('/'):
-        cacheLocation = cacheLocation + 'default'
+  #try:
+  safe_resource = re.sub(r'[^\w\-_./]', '_', resource)
+  cacheLocation = './' + hostname + safe_resource
+  if cacheLocation.endswith('/'):
+      cacheLocation = cacheLocation + 'default'
 
-    print ('Cache location:\t\t' + cacheLocation)
+  print ('Cache location:\t\t' + cacheLocation)
 
-    fileExists = os.path.isfile(cacheLocation)
-    
+    #fileExists = os.path.isfile(cacheLocation)
+  try: 
     # Check wether the file is currently in the cache
     cacheFile = open(cacheLocation, "r")
     cacheData = cacheFile.readlines()
@@ -142,7 +141,7 @@ while True:
     # ~~~~ INSERT CODE ~~~~
 
     originServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+    originServerSocket.connect((hostname, 80))
     # ~~~~ END CODE INSERT ~~~~
 
     print ('Connecting to:\t\t' + hostname + '\n')
@@ -152,13 +151,16 @@ while True:
       # Connect to the origin server
       # ~~~~ INSERT CODE ~~~~
 
-      originServerSocket.connect((hostname, 80))
+      originServerRequest = f"GET {resource} HTTP/1.1"
+      originServerRequestHeader = f"Host: {hostname}\r\nConnection: close\r\n"
+      request = originServerRequest + '\r\n' + originServerRequestHeader + '\r\n\r\n'
+      originServerSocket.sendall(request.encode())
 
       # ~~~~ END CODE INSERT ~~~~
       print ('Connected to origin Server')
 
-      originServerRequest = ''
-      originServerRequestHeader = ''
+      #originServerRequest = ''
+      #originServerRequestHeader = ''
       # Create origin server request line and headers to send
       # and store in originServerRequestHeader and originServerRequest
       # originServerRequest is the first line in the request and
@@ -172,36 +174,54 @@ while True:
 
       # Construct the request to send to the origin server
       request = originServerRequest + '\r\n' + originServerRequestHeader + '\r\n\r\n'
+      originServerSocket.sendall(request.encode())
 
       # Request the web resource from origin server
       print ('Forwarding request to origin server:')
       for line in request.split('\r\n'):
         print ('> ' + line)
 
-      try:
-        originServerSocket.sendall(request.encode())
-      except socket.error:
-        print ('Forward request to origin failed')
-        sys.exit()
+      response_data = originServerSocket.recv(BUFFER_SIZE)
+      header_part = response_data.split(b"\r\n\r\n")[0]
+      status_code = header_part.split(b" ")[1]
 
-      print('Request sent to origin server\n')
+      if status_code in [b'301', b'302']:
+        print(f"{status_code.decode()} Redirect detected")
+        location_header = [line for line in header_part.split(b"\r\n") if b"Location:" in line]
+        if location_header:
+          location_url = location_header[0].decode().split(": ",1)[1]
+          print(f"Redirecting to: {location_url}")
+
+          new_parts = re.sub('^http(s?)://', '', location_url).split('/', 1)
+          new_host = new_parts[0]
+          new_resource = '/' + new_parts[1] if len(new_parts) == 2 else '/'
+
+          originServerSocket.close()
+          originServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          originServerSocket.connect((new_host, 80))
+
+          new_request = f"GET {new_resource} HTTP/1.1\r\nHost: {new_host}\r\nConnection: close\r\n\r\n"
+          originServerSocket.sendall(new_request.encode())
+          response_data = originServerSocket.recv(BUFFER_SIZE)
+
+
+      #try:
+        #originServerSocket.sendall(request.encode())
+      #except socket.error:
+       # print ('Forward request to origin failed')
+        #sys.exit()
+
+      #print('Request sent to origin server\n')
 
       # Get the response from the origin server
       # ~~~~ INSERT CODE ~~~~
 
-      response = b''
-      while True:
-          chunk = originServerSocket.recv(BUFFER_SIZE)
-          if not chunk:
-              break
-          response += chunk
+      clientSocket.sendall(response_data)
 
       # ~~~~ END CODE INSERT ~~~~
 
       # Send the response to the client
       # ~~~~ INSERT CODE ~~~~
-
-      clientSocket.sendall(response)
 
       # ~~~~ END CODE INSERT ~~~~
 
@@ -210,18 +230,20 @@ while True:
       print ('cached directory ' + cacheDir)
       if not os.path.exists(cacheDir):
         os.makedirs(cacheDir)
-      cacheFile = open(cacheLocation, 'wb')
+        with open(cacheLocation, 'wb') as cacheFile:
+          cacheFile.write(response_data)
+        print('Response saved to cache')
 
       # Save origin server response in the cache file
       # ~~~~ INSERT CODE ~~~~
-      cacheFile.write(response)
+      #cacheFile.write(response)
   
       # ~~~~ END CODE INSERT ~~~~
-      cacheFile.close()
-      print ('cache file closed')
+      #cacheFile.close()
+      #print ('cache file closed')
 
       # finished communicating with origin server - shutdown socket writes
-      print ('origin response received. Closing sockets')
+      #print ('origin response received. Closing sockets')
       originServerSocket.close()
        
       clientSocket.shutdown(socket.SHUT_WR)
