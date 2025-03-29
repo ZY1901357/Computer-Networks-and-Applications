@@ -5,6 +5,8 @@ import sys
 import os
 import argparse
 import re
+import time
+
 
 # 1MB buffer size
 BUFFER_SIZE = 1000000
@@ -124,9 +126,27 @@ while True:
     fileExists = os.path.isfile(cacheLocation)
     
     # Check wether the file is currently in the cache
-    with open(cacheLocation, "rb") as cacheFile:
-      cacheData = cacheFile.read()
-    clientSocket.sendall(cacheData)
+    cache_valid = True
+    timestamp_path = cacheLocation + '.time'
+
+    # Check if cached response has expired or not
+    if os.path.isfile(timestamp_path):
+        with open(timestamp_path, 'r') as timeFile:
+            cached_time, max_age = map(int, timeFile.read().split(','))
+        current_time = int(time.time())
+        if current_time - cached_time > max_age:
+            print("Cached file expired. Fetching fresh data.")
+            cache_valid = False
+            os.remove(cacheLocation)
+            os.remove(timestamp_path)
+
+    if cache_valid:
+        with open(cacheLocation, "rb") as cacheFile:
+            cacheData = cacheFile.read()
+        clientSocket.sendall(cacheData)
+        print ('Cache hit! Loaded fresh from cache: ' + cacheLocation)
+        continue  # important to skip fetching again
+
 
     print ('Cache hit! Loading from cache file: ' + cacheLocation)
     # ProxyServer finds a cache hit
@@ -207,6 +227,22 @@ while True:
       with open(cacheLocation, 'wb') as cacheFile:
       # ~~~~ END CODE INSERT ~~~~
         cacheFile.write(response_data)
+      response_text = response_data.decode('utf-8', 'ignore')
+      headers, _, body = response_text.partition('\r\n\r\n')
+
+      max_age_seconds = None
+      for line in headers.split("\r\n"):
+          if line.lower().startswith("cache-control:"):
+              match = re.search(r'max-age=(\d+)', line, re.I)
+              if match:
+                  max_age_seconds = int(match.group(1))
+                  print(f"Found max-age: {max_age_seconds} seconds")
+                  break
+
+      if max_age_seconds is not None:
+          with open(cacheLocation + '.time', 'w') as timeFile:
+              timeFile.write(str(int(time.time())) + ',' + str(max_age_seconds))
+
       print('Response saved to cache')
 
       originServerSocket.close()
