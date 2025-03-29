@@ -76,6 +76,11 @@ while True:
 
   # Extract the method, URI and version of the HTTP client request 
   requestParts = message.split()
+  if len(requestParts) < 3:
+    print("Incomplete or invalid HTTP request received. Closing connection.")
+    clientSocket.close()
+    continue
+
   method = requestParts[0]
   URI = requestParts[1]
   version = requestParts[2]
@@ -84,6 +89,11 @@ while True:
   print ('URI:\t\t' + URI)
   print ('Version:\t' + version)
   print ('')
+
+  if len(requestParts) < 3:
+    print("Incomplete or invalid HTTP request received. Closing connection.")
+    clientSocket.close()
+    continue
 
   # Get the requested resource from URI
   # Remove http protocol from the URI
