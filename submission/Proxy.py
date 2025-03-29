@@ -61,7 +61,7 @@ while True:
   try:
     # ~~~~ INSERT CODE ~~~~
     #connection_socket = accept(listen_socket, NULL, NULL); from the lecture 
-    clientSocket, clientAddr = serverSocket.accept()
+    clientSocket, clientAddr = server_socket.accept()
     # ~~~~ END CODE INSERT ~~~~
     print ('Received a connection')
   except:
