@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "emulator.h"
 #include "gbn.h"
-#define sim_time time; /*I need to use the time for the timer*/
+#define sim_time time /*I need to use the time for the timer*/
 
 /* ******************************************************************
    Go Back N protocol.  Adapted from J.F.Kurose
