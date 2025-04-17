@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "emulator.h"
 #include "gbn.h"
-extern float time; /*I need to use the time for the timer*/
+#define sim_time time; /*I need to use the time for the timer*/
 
 /* ******************************************************************
    Go Back N protocol.  Adapted from J.F.Kurose
@@ -94,7 +94,7 @@ void A_output(struct msg message)
       /* Stores the packet in the sender_buffer */
       sender_buffer[nextseqnum].packet = sendpkt;
       sender_buffer[nextseqnum].acked = false;
-      sender_buffer[nextseqnum].send_time = time;
+      sender_buffer[nextseqnum].send_time = sim_time;
       sender_buffer[nextseqnum].active = true; 
     
     /*----------- END of my code -------------*/
