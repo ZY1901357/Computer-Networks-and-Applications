@@ -139,7 +139,8 @@ void A_input(struct pkt packet)
   }
 
   if (TRACE > 0){
-      printf ("----A: ACK %d received.\n", acknum);
+    printf("----A: ACK %d received.\n", acknum);
+
   }
 
   /*If it has not been ACKed put a sign on it*/
