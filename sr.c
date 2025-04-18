@@ -134,12 +134,12 @@ void A_input(struct pkt packet)
   /* if received ACK is  corrupted */ 
   if (IsCorrupted(packet)) {
     if (TRACE > 0)
-      printf("----A: Corrupted ACK %d is received. Ingnored\n",acknum);
+      printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
     return;
   }
 
   if (TRACE > 0){
-    printf("----A: ACK %d received.\n", acknum);
+    printf("----A: ACK %d is not a duplicate\n",packet.acknum);
 
   }
 
@@ -148,10 +148,11 @@ void A_input(struct pkt packet)
     sender_buffer[acknum].acked = true;
     new_ACKs++;
 
+    /*
     if (TRACE > 1){
       printf("----A: Packet %d marked as ACKed\n", acknum);
     }
-  
+  */
 
     /*Slide window from base forward -- clears the window and move forward by 1*/
     while (sender_buffer[base].acked && sender_buffer[base].active){
@@ -164,9 +165,14 @@ void A_input(struct pkt packet)
     if (base != nextseqnum){
       starttimer(A, RTT);
     }
-  }else{ 
-    if (TRACE > 1)
-      printf ("----A: Duplicate ACK %d ignored .\n", acknum);
+    else
+          if (TRACE > 0)
+        printf ("----A: duplicate ACK received, do nothing!\n");
+  
+  }
+  else 
+  if (TRACE > 0){
+    printf ("----A: corrupted ACK is received, do nothing!\n");
   }
 }
 
