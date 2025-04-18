@@ -72,7 +72,7 @@ bool IsCorrupted(struct pkt packet)
 static struct pkt buffer[WINDOWSIZE];  /* array for storing packets waiting for ACK */
 static int windowfirst, windowlast;    /* array indexes of the first/last packet awaiting ACK */
 static int windowcount;                /* the number of packets currently awaiting an ACK */
-static int A_nextseqnum;               /* the next sequence number to be used by the sender */
+/*static int A_nextseqnum;                the next sequence number to be used by the sender */
 
 /* called from layer 5 (application layer), passed the message to be sent to other side */
 void A_output(struct msg message)
@@ -113,7 +113,7 @@ void A_output(struct msg message)
       starttimer(A, RTT);
 
     /* get next sequence number, wrap back to 0 */
-    nextseqnum = (A_nextseqnum + 1) % SEQSPACE;  
+    nextseqnum = (nextseqnum + 1) % SEQSPACE;  
   }
   /* if blocked,  window is full */
   else {
@@ -139,7 +139,7 @@ void A_input(struct pkt packet)
   }
 
   if (TRACE > 0){
-      printf ("----A: ACK %d received. \n", acknum);
+      printf ("----A: ACK %d received.\n", acknum);
   }
 
   /*If it has not been ACKed put a sign on it*/
@@ -195,7 +195,7 @@ void A_timerinterrupt(void)
 void A_init(void)
 {
   /* initialise A's window, buffer and sequence number */
-  A_nextseqnum = 0;  /* A starts with seq num 0, do not change this */
+  nextseqnum = 0;  /* A starts with seq num 0, do not change this */
   windowfirst = 0;
   windowlast = -1;   /* windowlast is where the last packet sent is stored.  
 		     new packets are placed in winlast + 1 
