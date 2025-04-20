@@ -303,6 +303,8 @@ void B_input(struct pkt packet)
         receiver_buffer[packet.seqnum].packet = packet;
         receiver_buffer[packet.seqnum].received = 1;
 
+        packets_received++;
+
         sendpkt.seqnum = 0;
         sendpkt.acknum = packet.seqnum;
 
