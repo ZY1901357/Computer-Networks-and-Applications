@@ -267,7 +267,7 @@ void B_input(struct pkt packet)
     }
 
     for (i=0; i < 20; i++){
-      sendpkt.payload[i] = 0;
+      sendpkt.payload[i] = '0';
     }
     
     sendpkt.checksum = ComputeChecksum(sendpkt);
