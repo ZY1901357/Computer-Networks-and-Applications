@@ -154,18 +154,19 @@ void A_output(struct msg message)
 */
 void A_input(struct pkt packet)
 {
-
+  
   /* if received ACK is  corrupted */ 
   if (!IsCorrupted(packet)) {
-    if (TRACE > 0)
+    if (TRACE > 0){
       printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
-
+    }
 
     /*Check if this ACK is within the window*/
     if (sender_buffer[packet.acknum].active && !sender_buffer[packet.acknum].acked){
       /* packet is a new ACK */
-      if (TRACE > 0)
+      if (TRACE > 0){
         printf("----A: ACK %d is not a duplicate\n",packet.acknum);
+      }
 
       sender_buffer[packet.acknum].acked = 1; /*marsk as acked*/
       new_ACKs++;
@@ -176,45 +177,48 @@ void A_input(struct pkt packet)
         base = (base + 1) % SEQSPACE;
       }
 
-       /* start timer again if there are still more unacked packets in window */
       stoptimer(A);
       if (base != nextseqnum){
         starttimer(A, RTT);
       }
-    }
-    else{
-      if (TRACE > 0)
+    }else{
+      if (TRACE > 0){
         printf ("----A: duplicate ACK received, do nothing!\n");
+      }
     }
   }else{
-    if (TRACE > 0)
+    if (TRACE > 0){
       printf ("----A: corrupted ACK is received, do nothing!\n");
+    }
   }
 }
 
 /*page 256 fig 3.24*/
 /* called when A's timer goes off */
 void A_timerinterrupt(void)
-{
-  int i = base;
-
-  if (TRACE > 0)
-    printf("----A: time out,resend packets!\n");
-
+{ 
+  int i;
   
-  if( sender_buffer[i].active && !sender_buffer[i].acked){
-    tolayer3(A, sender_buffer[i].packet);
-    if (TRACE > 0)
-    printf ("---A: resending packet %d\n", sender_buffer[i].packet.seqnum);
+  if (TRACE > 0){
+    printf("----A: time out,resend packets!\n");
   }
   
-
-  /*Restart timer only if ther are still unacked packets*/
   stoptimer(A);
+  
+  
+  for ( i = 0; i <SEQSPACE; i++){
+    if( sender_buffer[i].active && !sender_buffer[i].acked){
+      tolayer3(A, sender_buffer[i].packet);
+      if (TRACE > 0){
+        printf ("---A: resending packet %d\n", sender_buffer[i].packet.seqnum);
+      }
+    }
+  }
 
+  /*Restart the timer for uncack packets*/
   for ( i = 0; i < SEQSPACE; i++){
     if (sender_buffer[i].active && !sender_buffer[i].acked){
-      starttimer(A, RTT);
+      starttimer(A,RTT);
       break;
     }
   }
@@ -243,7 +247,7 @@ static int expectedseqnum; /* the sequence number expected next by the receiver 
 static int B_nextseqnum;   /* the sequence number for the next packets sent by B */
 static int rcv_base = 0; /*first seqnum B is expecting*/
 int window_end;
-int in_window;
+bool in_window;
 
 /* called from layer 3, when a packet arrives for layer 4 at B*/
 void B_input(struct pkt packet)
@@ -251,8 +255,10 @@ void B_input(struct pkt packet)
   struct pkt sendpkt;
   int i;
 
+  int last_inorder = (rcv_base + SEQSPACE - 1) % SEQSPACE;
+
   /* if is corrupted resent the last ack to avoid sender timeout */
-  if  ( (IsCorrupted(packet)) ) {
+  if  ( IsCorrupted(packet)) {
     if (TRACE > 0){
       printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
     }
@@ -260,11 +266,7 @@ void B_input(struct pkt packet)
     /*fig 3.25 SR receiver events and actions point 1) "Packet with sequence number 
     in [rcv_base, rcv_base+N-1] is corectly received....."*/
     sendpkt.seqnum = 0;
-    if (rcv_base == 0){
-      sendpkt.acknum = SEQSPACE - 1;
-    }else{
-      sendpkt.acknum = rcv_base - 1;
-    }
+    sendpkt.acknum = last_inorder;
 
     for (i=0; i < 20; i++){
       sendpkt.payload[i] = '0';
@@ -273,80 +275,78 @@ void B_input(struct pkt packet)
     sendpkt.checksum = ComputeChecksum(sendpkt);
     tolayer3(B, sendpkt);
     return;
-    
   }
 
   /*Fig 3.23 Receiver view of sequence numbers*/
     /*Checks if packet is within the reciecver window or not */
-    window_end = (rcv_base + WINDOWSIZE) % SEQSPACE;
-    in_window= 0;
+  window_end = (rcv_base + WINDOWSIZE) % SEQSPACE;
+  in_window = false;
 
-    
-    if (rcv_base < window_end){
-      if (packet.seqnum >= rcv_base && packet.seqnum < window_end){
-        in_window = 1 ;
-      }
-    }else {
-      if (packet.seqnum >= rcv_base || packet.seqnum < window_end){
-        in_window = 1;
-      }
+  
+  if (rcv_base < window_end){
+    if (packet.seqnum >= rcv_base && packet.seqnum < window_end){
+      in_window = true ;
+    }
+  }else {
+    if (packet.seqnum >= rcv_base || packet.seqnum < window_end){
+      in_window = true;
+    }
+  }
+
+  /*fig3.25 "If the packet was not previously received, it is buffered. If this packet has a sequence number equal to
+    the base of the receive window (rcv_base in Figure 3.22), then this packet,
+    and any previously buffered and consecutively numbered (beginning with
+    rcv_base) packets are delivered to the upper layer.""*/
+  if (in_window && !receiver_buffer[packet.seqnum].received){
+    if (TRACE > 0){
+      printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
     }
 
-    /*fig3.25 "If the packet was not previously received, it is buffered. If this packet has a sequence number equal to
-      the base of the receive window (rcv_base in Figure 3.22), then this packet,
-      and any previously buffered and consecutively numbered (beginning with
-      rcv_base) packets are delivered to the upper layer.""*/
-    if (in_window && !receiver_buffer[packet.seqnum].received){
-      if (TRACE > 0){
-        printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-      }
-        receiver_buffer[packet.seqnum].packet = packet;
-        receiver_buffer[packet.seqnum].received = 1;
+    /*Create buffer*/
+    receiver_buffer[packet.seqnum].packet = packet;
+    receiver_buffer[packet.seqnum].received = 1;
+    packets_received++;
 
-        packets_received++;
+    /*ACK this packet*/
+    sendpkt.seqnum = 0;
+    sendpkt.acknum = packet.seqnum;
 
-        sendpkt.seqnum = 0;
-        sendpkt.acknum = packet.seqnum;
+    for ( i = 0; i < 20; i++){
+      sendpkt.payload[i] = '0';
+    }
 
-        for ( i = 0; i < 20; i++){
-          sendpkt.payload[i] = '0';
-        }
+    sendpkt.checksum = ComputeChecksum(sendpkt);
+    tolayer3(B, sendpkt);
 
-        sendpkt.checksum = ComputeChecksum(sendpkt);
-        tolayer3(B, sendpkt);
+    /*if n == rcv_base, deliver bufferedm in order packets to layer 5 and advance rcv_base fig 3.25*/
+    while (receiver_buffer[rcv_base].received){
+      tolayer5(B, receiver_buffer[rcv_base].packet.payload);
+      receiver_buffer[rcv_base].received = 0;
+      rcv_base = (rcv_base + 1) % SEQSPACE;
+    }
 
-        /*if n == rcv_base, deliver bufferedm in order packets to layer 5 and advance rcv_base fig 3.25*/
-        while (receiver_buffer[rcv_base].received){
-          tolayer5(B, receiver_buffer[rcv_base].packet.payload);
-          receiver_buffer[rcv_base].received = 0;
-          rcv_base = (rcv_base + 1) % SEQSPACE;
-        }
-    }else {
-      /* packet is corrupted or out of order resend last ACK */
-      if (TRACE > 0){
-        printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-      }
+  }else {
+    /* packet is corrupted or out of order resend last ACK */
+    if (TRACE > 0){
+      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
+    }
 
-      sendpkt.seqnum = 0;
+    sendpkt.seqnum = 0;
+    sendpkt.acknum = last_inorder;
 
-      if (rcv_base == 0){
-      sendpkt.acknum = SEQSPACE - 1;
-      }else{
-        sendpkt.acknum = rcv_base - 1;
-      }
 
-      /* we don't have any data to send.  fill payload with 0's */
-      for ( i=0; i<20 ; i++ ){
+    /* we don't have any data to send.  fill payload with 0's */
+    for ( i=0; i<20 ; i++ ){
       sendpkt.payload[i] = '0';  
-      }
+    }
 
-      /* computer checksum */
-      sendpkt.checksum = ComputeChecksum(sendpkt); 
+    /* computer checksum */
+    sendpkt.checksum = ComputeChecksum(sendpkt); 
 
-      /* send out packet */
-      tolayer3 (B, sendpkt);
+    /* send out packet */
+    tolayer3 (B, sendpkt);
       
-    } 
+  } 
 }
 
 /* the following routine will be called once (only) before any other */
