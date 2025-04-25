@@ -168,11 +168,13 @@ void A_timerinterrupt(void){
 
   if (TRACE > 0)
     printf("----A: time out,resend packets!\n");
+
   tolayer3(A, sender_buffer[base].packet);
 
   if (TRACE > 0)
     printf ("----A: resending packet %d\n", sender_buffer[base].packet.seqnum);
 
+  packets_resent++;
   starttimer(A, RTT); /*Restarts its timer*/
 }
   
