@@ -8,7 +8,7 @@
 
 #define RTT  16.0       /* round trip time.  MUST BE SET TO 16.0 when submitting assignment */
 #define WINDOWSIZE 6    /* the maximum number of buffered unacked packet */
-#define SEQSPACE 7      /* the min sequence space for GBN must be at least windowsize + 1 */
+#define SEQSPACE 12      /* the min sequence space for sr is 2 * windowsize  */
 #define NOTINUSE (-1)   /* used to fill header fields that are not being used */
 
 /****************************************************
@@ -141,6 +141,8 @@ void A_input(struct pkt packet){
   /*Check if this ACK is within the window*/
   if (sender_buffer[packet.acknum].active && !sender_buffer[packet.acknum].acked){
       sender_buffer[packet.acknum].acked = 1; /*marsk as acked*/
+      if (TRACE > 0)
+        printf("----A: ACK %d is not a duplicate\n",packet.acknum);
       new_ACKs++;
 
     /*Slide base forward*/
@@ -210,7 +212,7 @@ void B_input(struct pkt packet)
   /* if is corrupted resent the last ack to avoid sender timeout */
   if  ( IsCorrupted(packet)) {
     if (TRACE > 0)
-      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
+    printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
 
     /*fig 3.25 SR receiver events and actions point 1) "Packet with sequence number 
     in [rcv_base, rcv_base+N-1] is corectly received....."*/
