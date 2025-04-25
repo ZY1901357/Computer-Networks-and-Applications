@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -97,10 +98,10 @@ void A_output(struct msg message)
 
 
     /* send out packet */
-    
+    tolayer3 (A, sendpkt);
     if (TRACE > 0)
       printf("Sending packet %d to layer 3\n", sendpkt.seqnum);
-    tolayer3 (A, sendpkt);
+    
 
     /*fig 3.24 if base == nextseqnum (first unACKed pacekt), start timer*/
     /* start timer if first packet in window */
@@ -297,4 +298,3 @@ void B_output(struct msg message)
 void B_timerinterrupt(void)
 {
 }
-
