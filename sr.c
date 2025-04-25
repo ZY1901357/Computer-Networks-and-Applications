@@ -53,7 +53,10 @@ int ComputeChecksum(struct pkt packet)
 }
 
 bool IsCorrupted(struct pkt packet){
-  return packet.checksum != ComputeChecksum(packet);
+  if (packet.checksum == ComputeChecksum(packet))
+    return (false);
+  else
+    return (true);
 }
 
 
@@ -120,23 +123,13 @@ void A_output(struct msg message)
    In this practical this will always be an ACK as B never sends data.
 */
 void A_input(struct pkt packet){
-  if (IsCorrupted(packet)){
-    if (TRACE > 0)
-      printf ("----A: corrupted ACK is received, do nothing!\n");
-    return;
-  }
-  
   /* if received ACK is  corrupted */ 
   if (!IsCorrupted(packet)) {
     if (TRACE > 0){
       printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
     }
   }
-  
-  
-  if (TRACE > 0)
-    printf("----A: ACK is received, do nothing!\n");
-  
+    
   /*if we have a new ack for an active packet*/
   /*Check if this ACK is within the window*/
   if (sender_buffer[packet.acknum].active && !sender_buffer[packet.acknum].acked){
@@ -173,7 +166,7 @@ void A_timerinterrupt(void){
   tolayer3(A, sender_buffer[base].packet);
 
   if (TRACE > 0)
-    printf ("---A: resending packet %d\n", sender_buffer[base].packet.seqnum);
+    printf ("----A: resending packet %d\n", sender_buffer[base].packet.seqnum);
 
   starttimer(A, RTT); /*Restarts its timer*/
 }
@@ -212,8 +205,8 @@ void B_input(struct pkt packet)
   /* if is corrupted resent the last ack to avoid sender timeout */
   if  ( IsCorrupted(packet)) {
     if (TRACE > 0)
-    printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-
+      printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
+    
     /*fig 3.25 SR receiver events and actions point 1) "Packet with sequence number 
     in [rcv_base, rcv_base+N-1] is corectly received....."*/
     sendpkt.seqnum = 0;
