@@ -97,10 +97,10 @@ void A_output(struct msg message)
 
 
     /* send out packet */
-    tolayer3 (A, sendpkt);
+    
     if (TRACE > 0)
       printf("Sending packet %d to layer 3\n", sendpkt.seqnum);
-    
+    tolayer3 (A, sendpkt);
 
     /*fig 3.24 if base == nextseqnum (first unACKed pacekt), start timer*/
     /* start timer if first packet in window */
@@ -127,8 +127,9 @@ void A_input(struct pkt packet){
   if (!IsCorrupted(packet)) {
     if (TRACE > 0){
       printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
+    total_ACKs_received++;
     }
-  }
+  
     
   /*if we have a new ack for an active packet*/
   /*Check if this ACK is within the window*/
@@ -146,15 +147,19 @@ void A_input(struct pkt packet){
     }
 
     stoptimer(A);
-    if(base != nextseqnum)
-      starttimer(A, RTT);
-  } 
-  else {
-    if (TRACE > 0)
-      printf ("----A: duplicate ACK received, do nothing!\n");
+      if (base != nextseqnum){
+        starttimer(A, RTT);
+      }
+    }else{
+      if (TRACE > 0){
+        printf ("----A: duplicate ACK received, do nothing!\n");
+      }
+    }
+  }else{
+    if (TRACE > 0){
+      printf ("----A: corrupted ACK is received, do nothing!\n");
+    }
   }
-  if (TRACE > 0)
-    printf ("----A: corrupted ACK is received, do nothing!\n");
 }
 
 /*page 256 fig 3.24*/
