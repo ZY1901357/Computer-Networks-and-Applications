@@ -140,7 +140,6 @@ void A_input(struct pkt packet)
 
     /* Slide base only if the base packet is now ACked*/
     while (acked[base]){
-        /*printf("----A: Sliding the base from %d to %d", base, (base+1)%SEQSPACE\n);*/
         acked[base] = 0; /* RESET AFTER SLIDING*/
         send[base] = 0; 
         base = (base + 1) % SEQSPACE;
@@ -184,7 +183,7 @@ void A_timerinterrupt(void)
     int index = (base + i) % SEQSPACE;
     if (send[index] && !acked[index]){
         if (TRACE > 0)
-            printf ("---A: resending packet %d\n", (send_window[index % WINDOWSIZE]).seqnum);
+          printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
         tolayer3(A, send_window[index]);
 
     }
