@@ -59,10 +59,10 @@ bool IsCorrupted(struct pkt packet)
 
 /********* Sender (A) variables and functions ************/
 
-static struct pkt send_window[SEQSPACE];  /* array for storing packets waiting for ACK */
+static struct pkt buffer[SEQSPACE];  /* array for storing packets waiting for ACK */
 static int send[SEQSPACE];   /* 0 = not send, i = send*/
 int acked[SEQSPACE];  /* 0 = not acked, 1 = acked*/
-static int base = 0;                /* the number of packets currently awaiting an ACK */
+static int windowfirst = 0;                /* the number of packets currently awaiting an ACK */
 static int A_nextseqnum = 0;               /* the next sequence number to be used by the sender */
 static int timer_running = 0; 
 
@@ -78,7 +78,7 @@ void A_output(struct msg message)
   int index = A_nextseqnum;
 
   /* if not blocked waiting on ACK */
-  if ( isInWindow(base, A_nextseqnum)){
+  if ( isInWindow(windowfirst, A_nextseqnum)){
     if (TRACE > 1)
       printf("----A: New message arrives, send window is not full, send new messge to layer3!\n");
 
@@ -90,7 +90,7 @@ void A_output(struct msg message)
     sendpkt.checksum = ComputeChecksum(sendpkt); 
 
     /* WE save in send window */
-    send_window[index] = sendpkt;
+    buffer[index] = sendpkt;
     send[index] = 1;
     acked[index] = 0;
 
@@ -100,7 +100,7 @@ void A_output(struct msg message)
     tolayer3 (A, sendpkt);
 
     /* start timer if its the base packet */
-    if (base == A_nextseqnum)
+    if (windowfirst == A_nextseqnum)
       starttimer(A,RTT);
 
     /* get next sequence number, wrap back to 0 */
@@ -139,10 +139,10 @@ void A_input(struct pkt packet)
     }
 
     /* Slide base only if the base packet is now ACked*/
-    while (acked[base]){
-        acked[base] = 0; /* RESET AFTER SLIDING*/
-        send[base] = 0; 
-        base = (base + 1) % SEQSPACE;
+    while (acked[windowfirst]){
+        acked[windowfirst] = 0; /* RESET AFTER SLIDING*/
+        send[windowfirst] = 0; 
+        windowfirst = (windowfirst + 1) % SEQSPACE;
     }
     /* packet is a new ACK */
     if (TRACE > 0)
@@ -153,12 +153,12 @@ void A_input(struct pkt packet)
     stoptimer(0);
     timer_running = 0; 
 
-    if (base != A_nextseqnum){
+    if (windowfirst != A_nextseqnum){
         starttimer(A, RTT);
         timer_running = 1;
     }
 
-    while (isInWindow(base, A_nextseqnum) && buffer_first != buffer_last){
+    while (isInWindow(windowfirst, A_nextseqnum) && buffer_first != buffer_last){
       struct  msg next_msg = msg_buffer[buffer_first];
       buffer_first = (buffer_first + 1) % MAX_BUFFERED_MSGS;
       A_output(next_msg);
@@ -180,11 +180,11 @@ void A_timerinterrupt(void)
     printf("----A: time out,resend packets!\n");
 
   for(i=0; i<WINDOWSIZE; i++) {
-    int index = (base + i) % SEQSPACE;
+    int index = (windowfirst + i) % SEQSPACE;
     if (send[index] && !acked[index]){
         if (TRACE > 0)
           printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
-        tolayer3(A, send_window[index]);
+        tolayer3(A, buffer[index]);
 
     }
   }
@@ -200,7 +200,7 @@ void A_init(void)
     int i ; 
     /* initialise A's window, buffer and sequence number */
     A_nextseqnum = 0;  /* A starts with seq num 0, do not change this */
-    base = 0; 
+    windowfirst = 0; 
     buffer_first = 0;
     buffer_last= 0;
   
