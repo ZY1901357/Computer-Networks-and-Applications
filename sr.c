@@ -129,14 +129,21 @@ void A_input(struct pkt packet)
   /* if received ACK is not corrupted */ 
   if (!IsCorrupted(packet) && packet.acknum >= 0 && packet.acknum < SEQSPACE) {
     index = packet.acknum;
+
     if (TRACE > 0)
       printf("----A: uncorrupted ACK %d is received\n",packet.acknum);
-    total_ACKs_received++;
+    
+      total_ACKs_received++;
 
     /* Mark the packet as ACKed*/
     if (!acked[index]){
         acked[index] = 1;
     }
+
+     /* packet is a new ACK */
+     if (TRACE > 0)
+      printf("----A: ACK %d is not a duplicate\n",packet.acknum);
+     new_ACKs++;
 
     /* Slide base only if the base packet is now ACked*/
     while (acked[windowfirst]){
@@ -144,11 +151,7 @@ void A_input(struct pkt packet)
         send[windowfirst] = 0; 
         windowfirst = (windowfirst + 1) % SEQSPACE;
     }
-    /* packet is a new ACK */
-    if (TRACE > 0)
-        printf("----A: ACK %d is not a duplicate\n",packet.acknum);
-    new_ACKs++;
-
+   
     /* start timer again if there are still more unacked packets in window */
     stoptimer(0);
     timer_running = 0; 
@@ -163,12 +166,14 @@ void A_input(struct pkt packet)
       buffer_first = (buffer_first + 1) % MAX_BUFFERED_MSGS;
       A_output(next_msg);
     }
-      }if (TRACE > 0)
+      }else{
+      if (TRACE > 0)
           printf ("----A: duplicate ACK received, do nothing!\n");
       
         else 
             if (TRACE > 0)
             printf ("----A: corrupted ACK is received, do nothing!\n");
+  }
 }
 
 /* called when A's timer goes off */
