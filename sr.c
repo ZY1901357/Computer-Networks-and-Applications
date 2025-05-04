@@ -182,9 +182,9 @@ void A_timerinterrupt(void)
   for(i=0; i<WINDOWSIZE; i++) {
     int index = (windowfirst + i) % SEQSPACE;
     if (send[index] && !acked[index]){
-        if (TRACE > 0)
-          printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
-        tolayer3(A, buffer[index]);
+      if (TRACE > 0)
+        printf ("---A: resending packet %d\n", (buffer[(windowfirst+i) % WINDOWSIZE]).seqnum);
+      tolayer3(A, buffer[index]);
 
     }
   }
