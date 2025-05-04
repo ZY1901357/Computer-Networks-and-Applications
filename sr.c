@@ -105,7 +105,7 @@ void A_output(struct msg message)
   else {
     if (TRACE > 0)
       printf("----A: New message arrives, send window is full\n");
-
+    /*window_full++;*/
   }
 }
 
@@ -130,7 +130,7 @@ void A_input(struct pkt packet)
 
     /* Slide base only if the base packet is now ACked*/
     while (acked[base % WINDOWSIZE] && base != A_nextseqnum){
-        /*printf("----A: Sliding the base from %d to %d", base, (base+1)%SEQSPACE);*/
+        /*printf("----A: Sliding the base from %d to %d", base, (base+1)%SEQSPACE\n);*/
         acked[base % WINDOWSIZE] = 0; /* RESET AFTER SLIDING*/
         send[base % WINDOWSIZE] = 0; 
         base = (base + 1) % SEQSPACE;
