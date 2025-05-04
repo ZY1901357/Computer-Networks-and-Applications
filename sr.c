@@ -138,7 +138,7 @@ void A_input(struct pkt packet)
     /* packet is a new ACK */
     if (TRACE > 0)
         printf("----A: ACK %d is not a duplicate\n",packet.acknum);
-    /*new_ACKs++;*/
+    new_ACKs++;
 
     /* start timer again if there are still more unacked packets in window */
     stoptimer(0);
@@ -211,7 +211,7 @@ void B_input(struct pkt packet)
   if  ( !IsCorrupted(packet) ) {
     if (TRACE > 0)
       printf("----B: packet %d is correctly received, send ACK!\n",packet.seqnum);
-    /*packets_received++;*/
+    packets_received++;
     
     if (((packet.seqnum) >= expectedseqnum && (packet.seqnum) < expectedseqnum + WINDOWSIZE)
         || (expectedseqnum + WINDOWSIZE >= SEQSPACE && ((packet.seqnum) < (expectedseqnum + WINDOWSIZE) % SEQSPACE))){
